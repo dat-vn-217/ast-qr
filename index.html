@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AST WH – Tạo QR tổng</title>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<style>
+  :root { --g:#2e7d32; --g2:#92d050; --y:#ffeb3b; --r:#c62828; --bg:#f4f6f3; --line:#d7dcd4; --tx:#1d231c; --mu:#5f6b5c; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--tx); }
+  .top { background:var(--g); color:#fff; padding:12px 16px; font-weight:700; display:flex; justify-content:space-between; align-items:center; }
+  .top a { color:#fff; font-weight:400; font-size:14px; }
+  main { max-width:980px; margin:0 auto; padding:16px; display:grid; grid-template-columns:minmax(300px,420px) 1fr; gap:16px; }
+  @media (max-width:760px) { main { grid-template-columns:1fr; } }
+  .panel { background:#fff; border:1.5px solid var(--line); border-radius:14px; padding:16px; }
+  h2 { font-size:18px; margin:0 0 4px; display:flex; align-items:center; gap:8px; }
+  h2 .n { width:26px; height:26px; border-radius:50%; background:var(--tx); color:#fff; font-size:14px; display:inline-flex; align-items:center; justify-content:center; }
+  .hint { color:var(--mu); font-size:13px; margin:4px 0 12px; line-height:1.45; }
+  label { display:block; font-size:13px; font-weight:600; color:var(--mu); margin:10px 0 4px; }
+  input, textarea { width:100%; font-size:16px; padding:10px 12px; border:1.5px solid var(--line); border-radius:10px; font-family:inherit; }
+  textarea { min-height:110px; font-family:ui-monospace,Consolas,monospace; font-size:14px; }
+  input:focus, textarea:focus { outline:none; border-color:var(--g); }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:0 10px; }
+  .kho { display:flex; gap:8px; }
+  .kho button { flex:1; padding:10px 0; font-size:16px; font-weight:800; border-radius:10px; border:2px solid var(--line); background:#fff; cursor:pointer; }
+  .kho button.sel { background:var(--g); border-color:var(--g); color:#fff; }
+  .btn { display:block; width:100%; padding:14px; margin-top:12px; font-size:16px; font-weight:700; border-radius:12px; border:1.5px solid var(--g); background:var(--g); color:#fff; cursor:pointer; }
+  .btn.ghost { background:#fff; color:var(--g); }
+  .or { text-align:center; color:var(--mu); font-size:12px; margin:14px 0 4px; }
+  .msg { margin-top:10px; font-size:14px; color:var(--r); }
+  .ok { color:var(--g); }
+  #out { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-top:8px; }
+  .card { border:1.5px solid var(--line); border-radius:12px; padding:10px; text-align:center; background:#fff; }
+  .card img { width:100%; max-width:260px; image-rendering:pixelated; }
+  .card .t { font-family:ui-monospace,Consolas,monospace; font-size:12px; color:var(--mu); word-break:break-all; margin:4px 0 8px; }
+  .card button { padding:8px 12px; border-radius:8px; border:1.5px solid var(--g); background:#fff; color:var(--g); font-weight:700; cursor:pointer; }
+  .actions { display:flex; gap:8px; }
+  .actions .btn { margin-top:12px; }
+  .empty { color:var(--mu); text-align:center; padding:40px 10px; }
+  @media print {
+    .top, .panel.input, .noprint { display:none !important; }
+    main { display:block; padding:0; }
+    .panel { border:none; padding:0; }
+    #out { grid-template-columns:repeat(3,1fr); gap:6mm; }
+    .card { break-inside:avoid; border:1px dashed #999; }
+    .card button, .card .t { display:none; }
+  }
+</style>
+</head>
+<body>
+<div class="top">AST WH · Tạo QR tổng cho picklist</div>
+<main>
+  <section class="panel input">
+    <h2><span class="n">1</span> Nhập thông tin</h2>
+    <p class="hint">Nhập 4 ô cho 1 đơn, <b>hoặc</b> dán nhiều dòng ở ô bên dưới (mỗi dòng 1 đơn) để tạo nhiều mã cùng lúc.</p>
+    <label>Kho (tùy chọn – có thì app tự chọn kho)</label>
+    <div class="kho" id="kho"></div>
+    <div class="grid2">
+      <div><label>STT (NO.)</label><input id="stt" autocomplete="off"></div>
+      <div><label>ID (WO ID)</label><input id="id" autocomplete="off"></div>
+      <div><label>Item</label><input id="item" autocomplete="off" style="text-transform:uppercase"></div>
+      <div><label>Line</label><input id="line" autocomplete="off"></div>
+    </div>
+    <p class="or">— hoặc dán nhanh (nhiều dòng) —</p>
+    <textarea id="bulk" placeholder="15258;T3975119;HWHHW-N010-CN;C1F-W-2&#10;15259;T3975120;HMC74-1558-CN;A1F-T-1"></textarea>
+    <p class="hint" style="margin-top:6px">Mỗi dòng: <b>STT;ID;Item;Line</b> – ngăn cách bằng <b>;</b> hoặc <b>|</b> hoặc Tab (copy thẳng 4 cột từ Excel cũng được).</p>
+    <button class="btn" onclick="make()">⚡ Tạo QR</button>
+    <div class="msg" id="msg"></div>
+  </section>
+
+  <section class="panel">
+    <h2><span class="n">2</span> Tải / in QR</h2>
+    <p class="hint">QR tĩnh – chứa trực tiếp nội dung đơn, quét bằng app là tự điền 4 ô. Không hết hạn, không qua trang ngoài.</p>
+    <div class="actions noprint">
+      <button class="btn ghost" onclick="downloadAll()">⬇ Tải tất cả PNG</button>
+      <button class="btn ghost" onclick="window.print()">🖨 In</button>
+    </div>
+    <div id="out"><div class="empty">Chưa có mã. Nhập thông tin rồi bấm <b>Tạo QR</b>.</div></div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const KHO = ['OG', 'N2'];
+let kho = '';
+let made = [];
+
+function renderKho() {
+  $('kho').innerHTML = ['', ...KHO].map(k =>
+    '<button class="' + (kho === k ? 'sel' : '') + '" onclick="kho=\'' + k + '\';renderKho()">' + (k || 'Không') + '</button>').join('');
+}
+renderKho();
+
+function rowsFromInput() {
+  const rows = [];
+  const bulk = $('bulk').value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+  bulk.forEach((line, i) => {
+    const p = line.split(/\s*[|;\t]\s*/);
+    rows.push({ stt: p[0] || '', id: p[1] || '', item: (p[2] || '').toUpperCase(), line: p[3] || '', kho: (p[4] || kho).toUpperCase(), src: 'Dòng ' + (i + 1) });
+  });
+  const one = { stt: $('stt').value.trim(), id: $('id').value.trim(), item: $('item').value.trim().toUpperCase(), line: $('line').value.trim(), kho: kho, src: 'Ô nhập' };
+  if (one.stt || one.id || one.item || one.line) rows.unshift(one);
+  return rows;
+}
+
+function make() {
+  const rows = rowsFromInput(), errs = [];
+  made = [];
+  rows.forEach(r => {
+    if (!r.stt || !r.id || !r.item) { errs.push(r.src + ': thiếu STT, ID hoặc Item'); return; }
+    if (KHO.indexOf(r.kho) < 0) r.kho = '';
+    const text = [r.stt, r.id, r.item, r.line].concat(r.kho ? [r.kho] : []).join('|');
+    made.push({ r: r, text: text, url: render(text, r) });
+  });
+  $('msg').className = 'msg' + (errs.length ? '' : ' ok');
+  $('msg').innerHTML = errs.length ? '⚠ ' + errs.join('<br>⚠ ') : (made.length ? '✓ Đã tạo ' + made.length + ' mã' : '');
+  if (!rows.length) $('msg').textContent = 'Vui lòng nhập thông tin đơn.';
+  $('out').innerHTML = made.length ? made.map((m, i) =>
+    '<div class="card"><img src="' + m.url + '" alt="QR"><div class="t">' + esc(m.text) + '</div>' +
+    '<button onclick="dl(' + i + ')">⬇ Tải PNG</button></div>').join('')
+    : '<div class="empty">Chưa có mã. Nhập thông tin rồi bấm <b>Tạo QR</b>.</div>';
+}
+
+// Vẽ QR + nhãn chữ bên dưới ra PNG (1000px rộng)
+function render(text, r) {
+  const qr = qrcode(0, 'M');
+  qr.addData(text); qr.make();
+  const n = qr.getModuleCount(), quiet = 4, W = 1000;
+  const cell = Math.floor(W / (n + quiet * 2));
+  const qrPx = cell * (n + quiet * 2), off = Math.floor((W - qrPx) / 2);
+  const lines = [['STT ' + r.stt + (r.kho ? '   ·   Kho ' + r.kho : ''), 'bold 64px Arial'],
+                 ['ID ' + r.id, '48px Arial'], [r.item, 'bold 48px Arial'], [r.line ? 'Line ' + r.line : '', '42px Arial']].filter(l => l[0]);
+  const H = qrPx + 30 + lines.length * 66 + 30;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+  g.fillStyle = '#000';
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++)
+    if (qr.isDark(y, x)) g.fillRect(off + (x + quiet) * cell, (y + quiet) * cell, cell, cell);
+  g.textAlign = 'center'; g.textBaseline = 'top';
+  let y = qrPx + 20;
+  lines.forEach(l => { g.font = l[1]; g.fillText(l[0], W / 2, y, W - 40); y += 66; });
+  return c.toDataURL('image/png');
+}
+
+function dl(i) {
+  const m = made[i], a = document.createElement('a');
+  a.href = m.url; a.download = 'QR_' + m.r.stt + '_' + m.r.id + '.png';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+function downloadAll() {
+  if (!made.length) return;
+  made.forEach((m, i) => setTimeout(() => dl(i), i * 350));
+}
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+['stt', 'id', 'item', 'line'].forEach(id => $(id).addEventListener('keydown', e => { if (e.key === 'Enter') make(); }));
+</script>
+</body>
+</html>
